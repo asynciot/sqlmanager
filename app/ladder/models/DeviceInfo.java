@@ -59,6 +59,9 @@ public class DeviceInfo extends Model{
 
     public Integer runtime_state;
 
+    public Integer group_id;
+
+    public Integer ladder_id;
 
     public static Finder<Integer, DeviceInfo> finder =
             new Finder<Integer, DeviceInfo>(CommonConfig.LADDER_SERVER,Integer.class,DeviceInfo.class){};

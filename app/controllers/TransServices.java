@@ -2,7 +2,9 @@ package controllers;
 
 import threads.GetInfoThread;
 import threads.GetMessThread;
+import threads.GetDevThread;
 import threads.SendInfoThread;
+import threads.GetEventThread;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -17,10 +19,10 @@ public class TransServices {
     @Inject
     public TransServices(){
         new Thread(new GetInfoThread()).start();
+        new Thread(new GetDevThread()).start();
         new Thread(new GetMessThread()).start();
         new Thread(new SendInfoThread()).start();
+        new Thread(new GetEventThread()).start();
     }
-
-
 
 }

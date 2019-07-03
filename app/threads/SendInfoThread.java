@@ -126,9 +126,6 @@ public class SendInfoThread extends Thread{
             }
         }
 */
-
-
-
     }
     public  void sendbinary(){
         List<ladder.models.Binaries> binariesList = ladder.models.Binaries.finder.where().isNotNull("t_create").gt("t_create",old_datex).findList();

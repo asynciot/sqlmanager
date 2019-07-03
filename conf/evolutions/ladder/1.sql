@@ -78,6 +78,8 @@ create table device_info (
   delay                         varchar(255),
   rssi                          integer,
   runtime_state                 integer,
+  group_id                      integer,
+  ladder_id                     integer,
   constraint pk_device_info primary key (id)
 );
 
@@ -145,6 +147,18 @@ create table iplocation (
   constraint pk_iplocation primary key (id)
 );
 
+create table ladder (
+  id                            integer auto_increment not null,
+  ctrl_id                       integer,
+  name                          varchar(255),
+  ctrl                          varchar(255),
+  door1                         varchar(255),
+  door2                         varchar(255),
+  install_addr                  varchar(255),
+  state                         varchar(255),
+  constraint pk_ladder primary key (id)
+);
+
 create table logs (
   id                            integer auto_increment not null,
   dock_id                       integer,
@@ -194,6 +208,8 @@ drop table if exists docks;
 drop table if exists events;
 
 drop table if exists iplocation;
+
+drop table if exists ladder;
 
 drop table if exists logs;
 
