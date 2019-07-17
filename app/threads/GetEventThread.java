@@ -8,6 +8,7 @@ import device.models.Devices;
 import device.models.Events;
 import device.models.Monitor;
 import device.models.Runtime;
+import ladder.models.Order;
 import ladder.models.Ladder;
 import ladder.models.DeviceInfo;
 import play.Logger;
@@ -45,6 +46,57 @@ public class GetEventThread extends Thread {
             ladder_event.interval = events.interval;
             ladder_event.length = events.length;
             ladder_event.time = events.time;
+            ladder.models.Devices devices= ladder.models.Devices.finder.byId(events.device_id);
+            if(devices.device=="15"){
+                for(int i=0;i<events.data.length/8;i++){
+                    byte[] buffer = events.data;
+                    if(devices.model=="1"){
+                        if((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>1000){
+                            if(devices.order_times==null){
+                                devices.order_times = 0;
+                            }else {
+                                devices.order_times = devices.order_times + 1;
+                            }
+                            if(devices.order_times==10){
+                                Order Order =new Order();
+                                Order.device_id=events.device_id;
+                                Order.code=179;
+                                Order.type=0;
+                                Order.producer="sys";
+                                Order.device_type="15";
+                                Order.createTime=new Date().getTime()+"";
+                                Order.state="untreated";
+                                Order.islast=1;
+                            }
+                            break;
+                        }else{
+                            devices.order_times = 0;
+                        }
+                    }else if(devices.model=="2"){
+                        if((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>2500){
+                            if(devices.order_times==null){
+                                devices.order_times = 0;
+                            }else {
+                                devices.order_times = devices.order_times + 1;
+                            }
+                            if(devices.order_times==10){
+                                Order Order =new Order();
+                                Order.device_id=events.device_id;
+                                Order.code=179;
+                                Order.type=0;
+                                Order.producer="sys";
+                                Order.device_type="15";
+                                Order.createTime=new Date().getTime()+"";
+                                Order.state="untreated";
+                                Order.islast=1;
+                            }
+                            break;
+                        }else{
+                            devices.order_times = 0;
+                        }
+                    }
+                }
+            }
             save_events.add(ladder_event);
             new_datex = new_datex.getTime() > events.time.getTime() ? new_datex : events.time;
         }

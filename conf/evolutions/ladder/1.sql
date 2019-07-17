@@ -103,6 +103,7 @@ create table devices (
   cell_lac                      integer,
   cell_cid                      integer,
   ipaddr                        varchar(255),
+  order_times                   integer,
   constraint uq_devices_imei unique (imei),
   constraint pk_devices primary key (id)
 );
@@ -179,6 +180,26 @@ create table monitor (
   constraint pk_monitor primary key (id)
 );
 
+create table offline (
+  id                            integer auto_increment not null,
+  device_id                     integer,
+  t_logout                      datetime(6),
+  constraint pk_offline primary key (id)
+);
+
+create table `order` (
+  id                            integer auto_increment not null,
+  device_id                     integer,
+  type                          integer,
+  create_time                   varchar(255),
+  state                         varchar(255),
+  code                          integer,
+  device_type                   varchar(255),
+  producer                      varchar(255),
+  islast                        integer,
+  constraint pk_order primary key (id)
+);
+
 create table runtime (
   id                            integer auto_increment not null,
   device_id                     integer,
@@ -214,6 +235,10 @@ drop table if exists ladder;
 drop table if exists logs;
 
 drop table if exists monitor;
+
+drop table if exists offline;
+
+drop table if exists `order`;
 
 drop table if exists runtime;
 

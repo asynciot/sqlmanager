@@ -5,6 +5,7 @@ import threads.GetMessThread;
 import threads.GetDevThread;
 import threads.SendInfoThread;
 import threads.GetEventThread;
+import threads.GetOffThread;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -23,6 +24,7 @@ public class TransServices {
         new Thread(new GetMessThread()).start();
         new Thread(new SendInfoThread()).start();
         new Thread(new GetEventThread()).start();
+        new Thread(new GetOffThread()).start();
     }
 
 }

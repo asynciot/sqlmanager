@@ -9,6 +9,7 @@ import device.models.Events;
 import device.models.Monitor;
 import device.models.Runtime;
 import ladder.models.Ladder;
+import ladder.models.Offline;
 import ladder.models.DeviceInfo;
 import play.Logger;
 import play.libs.Json;
@@ -16,6 +17,7 @@ import play.libs.ws.WS;
 import play.libs.ws.WSResponse;
 
 import java.util.*;
+import java.text.SimpleDateFormat;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -24,6 +26,7 @@ import java.util.concurrent.CompletionStage;
 public class GetDevThread extends Thread {
 
     public static Date old_datex=new Date();
+    public static Date old_logout=new Date();
     public static Date new_datex=new Date();
     public static Date datex_one=new Date();
     public static Date datex_two=new Date();
@@ -45,6 +48,7 @@ public class GetDevThread extends Thread {
         List<ladder.models.Devices> delete_devices=new ArrayList<ladder.models.Devices>();
         List<DeviceInfo> deviceInfoList=new ArrayList<DeviceInfo>();
         List<Ladder> ladderList=new ArrayList<Ladder>();
+        List<Offline> save_offline=new ArrayList<Offline>();
         for(Devices devices : devicesList){
             if(old_datex.getTime()>=devices.t_update.getTime()&&init_device==false){
                 continue;
@@ -74,6 +78,11 @@ public class GetDevThread extends Thread {
             machine_device.cell_lac= devices.cell_lac;
             machine_device.cell_mnc= devices.cell_mnc;
 
+            if(mamodel!=null){
+                if(mamodel.order_times!=null){
+                    machine_device.order_times= mamodel.order_times;
+                }
+            }
             DeviceInfo deviceInfo=new DeviceInfo();
             if(DeviceInfo.finder.byId(devices.id)==null){
                 deviceInfo.device_name="未命名设备";
@@ -97,7 +106,6 @@ public class GetDevThread extends Thread {
                 String sql= String.format("UPDATE ladder.device_info set register='%s',state='%s' where imei='%s'",register,"online", devices.IMEI);
                 Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
             }
-
             Ladder ladder_one = Ladder.finder.where().eq("ctrl_id",deviceInfo.id).findUnique();
             if(ladder_one!=null){
                 ladder_one.state = deviceInfo.state;
@@ -122,12 +130,6 @@ public class GetDevThread extends Thread {
         }
 
     }
-    public void update_dock(){
-
-    }
-    public void update_log(){
-
-    }
 
     @Override
     public void run() {
@@ -135,10 +137,9 @@ public class GetDevThread extends Thread {
             try{
                 Thread.sleep(1000);
                 update_device();
-                update_dock();
-                update_log();
                 Logger.info("Move Info from db1 to db2 ok at :"+new_datex);
                 old_datex=new_datex;
+                old_logout=new_datex;
                 if(init_device==true){
                     Logger.info("init ok");
                     init_device=false;

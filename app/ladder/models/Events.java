@@ -23,6 +23,7 @@ public class Events extends Model {
     public Integer interval;
 
     public byte[] data;
+
     public static Finder<Integer, Events> finder =
             new Finder<Integer, Events>(CommonConfig.LADDER_SERVER,Integer.class, Events.class){};
 }

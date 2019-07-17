@@ -50,6 +50,7 @@ public class Devices extends Model {
 
     public String ipaddr;
 
+    public Integer order_times;
 
     public static Finder<Integer, Devices> finder =
             new Finder<Integer, Devices>(CommonConfig.LADDER_SERVER,Integer.class, Devices.class){};
