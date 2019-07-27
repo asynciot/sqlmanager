@@ -59,6 +59,7 @@ create table devices (
   cell_lac                      integer,
   cell_cid                      integer,
   ipaddr                        varchar(255),
+  order_times                   integer,
   constraint uq_devices_imei unique (imei),
   constraint pk_devices primary key (id)
 );

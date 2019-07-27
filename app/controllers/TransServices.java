@@ -23,8 +23,8 @@ public class TransServices {
         new Thread(new GetDevThread()).start();
         new Thread(new GetMessThread()).start();
         new Thread(new SendInfoThread()).start();
-        new Thread(new GetEventThread()).start();
         new Thread(new GetOffThread()).start();
+        new Thread(new GetEventThread()).start();
     }
 
 }

@@ -190,13 +190,14 @@ create table offline (
 create table `order` (
   id                            integer auto_increment not null,
   device_id                     integer,
-  type                          integer,
-  create_time                   varchar(255),
-  state                         varchar(255),
-  code                          integer,
   device_type                   varchar(255),
+  code                          integer,
+  state                         varchar(255),
+  create_time                   varchar(255),
+  type                          integer,
   producer                      varchar(255),
   islast                        integer,
+  item                          varchar(255),
   constraint pk_order primary key (id)
 );
 

@@ -54,10 +54,13 @@ public class GetDevThread extends Thread {
                 continue;
             }
             ladder.models.Devices mamodel= ladder.models.Devices.finder.byId(devices.id);
+            ladder.models.Devices machine_device  = new ladder.models.Devices();
             if(mamodel!=null){
                 delete_devices.add(mamodel);
+                if(mamodel.order_times!=null){
+                    machine_device.order_times= mamodel.order_times;
+                }
             }
-            ladder.models.Devices machine_device  = new ladder.models.Devices();
             machine_device.id= devices.id;
             machine_device.dock_id= devices.dock_id;
             machine_device.IMSI= devices.IMSI;
@@ -78,11 +81,7 @@ public class GetDevThread extends Thread {
             machine_device.cell_lac= devices.cell_lac;
             machine_device.cell_mnc= devices.cell_mnc;
 
-            if(mamodel!=null){
-                if(mamodel.order_times!=null){
-                    machine_device.order_times= mamodel.order_times;
-                }
-            }
+
             DeviceInfo deviceInfo=new DeviceInfo();
             if(DeviceInfo.finder.byId(devices.id)==null){
                 deviceInfo.device_name="未命名设备";
