@@ -100,7 +100,7 @@ public class GetEventThread extends Thread {
                                         .findUnique();
                                 if (orderlast != null) {
                                     orderlast.islast = 0;
-                                    orderlast.save();
+                                    save_order.add(orderlast);
                                 }
                                 save_order.add(order);
                                 Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
@@ -115,10 +115,11 @@ public class GetEventThread extends Thread {
                                     .findUnique();
                             if (orderlast != null) {
                                 orderlast.state = "treated";
-                                orderlast.save();
+                                save_order.add(orderlast);
                             }
+                            Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                         }
-                    } else {
+                    } else if (devices.model.equals("2")) {
                         if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>2500) {
                             count = 1;
                             if (devices.order_times == null) {
@@ -127,7 +128,6 @@ public class GetEventThread extends Thread {
                                 Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
                             } else {
                                 devices.order_times = devices.order_times + 1;
-                                Logger.info(String.valueOf(devices.order_times));
                                 devicesList.add(devices);
                                 Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
                             }
@@ -157,13 +157,13 @@ public class GetEventThread extends Thread {
                                 }
                                 Order orderlast = Order.finder.where()
                                         .eq("device_id", devices.id)
-                                        .eq("type", 179)
+                                        .eq("type", 1)
                                         .eq("islast", 1)
                                         .notIn("state", "treated")
                                         .findUnique();
                                 if (orderlast != null) {
                                     orderlast.islast = 0;
-                                    orderlast.save();
+                                    save_order.add(orderlast);
                                 }
                                 save_order.add(order);
                                 Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
@@ -172,14 +172,15 @@ public class GetEventThread extends Thread {
                         } else if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
                             Order orderlast = Order.finder.where()
                                     .eq("device_id", devices.id)
-                                    .notIn("type", 179)
+                                    .notIn("code", 179)
                                     .eq("islast", 1)
                                     .notIn("state", "treated")
                                     .findUnique();
                             if (orderlast != null) {
                                 orderlast.state = "treated";
-                                orderlast.save();
+                                save_order.add(orderlast);
                             }
+                            Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                         }
                     }
                 }
@@ -197,6 +198,7 @@ public class GetEventThread extends Thread {
 
     public void update_runtime() {
         List<Runtime> runtimeList = null;
+        List<Order> save_order = new ArrayList<Order>();
         if (init_device) {
             runtimeList = Runtime.finder.where().findList();
         } else {
@@ -220,6 +222,24 @@ public class GetEventThread extends Thread {
             if (runtime1 != null && runtime1.size() > 0) {
                 delete_runtime.addAll(runtime1);
             }
+            if(runtime.type == 8192){
+                byte[] buffer = runtime.data;
+                int bufferData = (((buffer[8]&0xff))&0x20)>>5;
+                if( bufferData==0){
+                    Order orderlast = Order.finder.where()
+                            .eq("device_id", runtime.device_id)
+                            .eq("type", 1)
+                            .eq("device_type", "ctrl")
+                            .eq("islast", 1)
+                            .notIn("state", "treated")
+                            .findUnique();
+                    if (orderlast != null) {
+                        orderlast.state = "treated";
+                        save_order.add(orderlast);
+                        Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
+                    }
+                }
+            }
             if (runtime.type == 4096 || runtime.type == 8192) {
                 try {
                     Integer rssi = null;
@@ -242,18 +262,22 @@ public class GetEventThread extends Thread {
                         String sql = String.format("UPDATE ladder.device_info set rssi=%d,runtime_state=%d where id=%d", rssi, runtime_state, runtime.device_id);
                         Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
 
-                        String url = "http://127.0.0.1:9006/device/alert";
-                        Map<String, Object> result = new HashMap<String, Object>();
-                        result.put("code", alert);
-                        result.put("device_id", runtime.device_id);
-                        result.put("device_type", type);
-                        result.put("producer", "sys");
-                        result.put("type", "1");
-                        CompletionStage<JsonNode> jsonPromise = WS.url(url)
-                                .setRequestTimeout(TIME_OUT)
-                                .setContentType("application/json")
-                                .post(Json.toJson(result))
-                                .thenApply(WSResponse::asJson);
+                        byte[] buffer = runtime.data;
+                        int bufferData = (((buffer[8]&0xff))&0x20)>>5;
+                        if(bufferData==1){
+                            String url = "http://127.0.0.1:9006/device/alert";
+                            Map<String, Object> result = new HashMap<String, Object>();
+                            result.put("code", alert);
+                            result.put("device_id", runtime.device_id);
+                            result.put("device_type", type);
+                            result.put("producer", "sys");
+                            result.put("type", "1");
+                            CompletionStage<JsonNode> jsonPromise = WS.url(url)
+                                    .setRequestTimeout(TIME_OUT)
+                                    .setContentType("application/json")
+                                    .post(Json.toJson(result))
+                                    .thenApply(WSResponse::asJson);
+                        }
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -276,7 +300,7 @@ public class GetEventThread extends Thread {
                             Map<String, Object> result = new HashMap<String, Object>();
                             result.put("code", "1");
                             result.put("device_id", runtime.device_id);
-                            result.put("device_type", deviceInfo.device_type.equals("240") ? "door" : "ctrl");
+                            result.put("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door");
                             result.put("producer", "sys");
                             result.put("type", "2");
                             CompletionStage<JsonNode> jsonPromise = WS.url(url)
@@ -294,7 +318,7 @@ public class GetEventThread extends Thread {
                             Map<String, Object> result = new HashMap<String, Object>();
                             result.put("code", "1");
                             result.put("device_id", runtime.device_id);
-                            result.put("device_type", deviceInfo.device_type.equals("240") ? "door" : "ctrl");
+                            result.put("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door");
                             result.put("producer", "sys");
                             result.put("type", "3");
                             CompletionStage<JsonNode> jsonPromise = WS.url(url)
@@ -303,14 +327,11 @@ public class GetEventThread extends Thread {
                                     .post(Json.toJson(result))
                                     .thenApply(WSResponse::asJson);
                         }
-
                     }
                 }
-
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
         }
         Ebean.getServer(CommonConfig.LADDER_SERVER).deleteAll(delete_runtime);
         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_runtime);

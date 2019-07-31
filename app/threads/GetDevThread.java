@@ -127,7 +127,6 @@ public class GetDevThread extends Thread {
             String sql= String.format("UPDATE ladder.device_info set state='%s' where imei='%s'","longoffline", devices.IMEI);
             Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
         }
-
     }
 
     @Override
