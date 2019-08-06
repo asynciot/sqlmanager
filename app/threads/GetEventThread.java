@@ -296,6 +296,16 @@ public class GetEventThread extends Thread {
                         remind = Long.parseLong(deviceInfo.maintenance_remind);
                         nexttime = Long.parseLong(deviceInfo.maintenance_nexttime);
                         if (nowl + remind > nexttime && nowl < nexttime) {
+                            int counts = Order.finder.where()
+                                    .eq("device_id", runtime.device_id)
+                                    .eq("type", "2")
+                                    .eq("code", "1")
+                                    .eq("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door")
+                                    .notIn("state", "treated")
+                                    .findRowCount();
+                            if (counts != 0) {
+                                break;
+                            }
                             String url = "http://127.0.0.1:9006/device/alert";
                             Map<String, Object> result = new HashMap<String, Object>();
                             result.put("code", "1");
