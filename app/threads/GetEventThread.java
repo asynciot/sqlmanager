@@ -2,16 +2,18 @@ package threads;
 
 import com.avaje.ebean.Ebean;
 import com.avaje.ebean.SqlRow;
+import com.avaje.ebean.Expr;
+import com.avaje.ebean.ExpressionList;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.javafx.css.parser.LadderConverter;
 import controllers.CommonConfig;
 import device.models.Devices;
+import device.models.DeviceInfo;
 import device.models.Events;
 import device.models.Monitor;
 import device.models.Runtime;
 import ladder.models.Order;
 import ladder.models.Ladder;
-import ladder.models.DeviceInfo;
 import play.Logger;
 import play.libs.Json;
 import play.libs.ws.WS;
@@ -41,7 +43,8 @@ public class GetEventThread extends Thread {
         List<ladder.models.Events> save_events = new ArrayList<ladder.models.Events>();
         List<ladder.models.Devices> devicesList = new ArrayList<ladder.models.Devices>();
         List<Order> save_order = new ArrayList<Order>();
-		List<DeviceInfo> deviceInfoList = new ArrayList<DeviceInfo>();
+		// List<DeviceInfo> deviceInfoList = new ArrayList<DeviceInfo>();
+		ExpressionList<DeviceInfo> exprList= DeviceInfo.finder.where();
         for (Events events : eventsList) {
             ladder.models.Devices devices = ladder.models.Devices.finder.byId(events.device_id);
             if (old_datex.getTime() >= events.time.getTime()) {
@@ -54,11 +57,9 @@ public class GetEventThread extends Thread {
             ladder_event.length = events.length;
             ladder_event.time = events.time;
 			
-			
-			deviceInfoList = exprList
+			DeviceInfo deviceInfoList = exprList
 			        .eq("id",events.device_id)
 			        .findUnique();
-			
             if (devices.device.equals("15")) {
                 byte[] buffer = events.data;
                 int count = 0;
@@ -92,7 +93,6 @@ public class GetEventThread extends Thread {
 								if (deviceInfoList != null) {
 									order.item = deviceInfoList.item;
 								}
-								order.item = 1;
                                 int counts = Order.finder.where()
                                         .eq("device_id", devices.id)
                                         .eq("type", 1)
