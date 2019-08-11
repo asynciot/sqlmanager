@@ -41,6 +41,7 @@ public class GetEventThread extends Thread {
         List<ladder.models.Events> save_events = new ArrayList<ladder.models.Events>();
         List<ladder.models.Devices> devicesList = new ArrayList<ladder.models.Devices>();
         List<Order> save_order = new ArrayList<Order>();
+		List<DeviceInfo> deviceInfoList = new ArrayList<DeviceInfo>();
         for (Events events : eventsList) {
             ladder.models.Devices devices = ladder.models.Devices.finder.byId(events.device_id);
             if (old_datex.getTime() >= events.time.getTime()) {
@@ -52,6 +53,12 @@ public class GetEventThread extends Thread {
             ladder_event.interval = events.interval;
             ladder_event.length = events.length;
             ladder_event.time = events.time;
+			
+			
+			deviceInfoList = exprList
+			        .eq("id",events.device_id)
+			        .findUnique();
+			
             if (devices.device.equals("15")) {
                 byte[] buffer = events.data;
                 int count = 0;
@@ -81,8 +88,11 @@ public class GetEventThread extends Thread {
                                 order.device_type = "door";
                                 order.createTime = new Date().getTime() + "";
                                 order.state = "untreated";
-                                order.producer = "sys";
                                 order.islast = 1;
+								if (deviceInfoList != null) {
+									order.item = deviceInfoList.item;
+								}
+								order.item = 1;
                                 int counts = Order.finder.where()
                                         .eq("device_id", devices.id)
                                         .eq("type", 1)
@@ -144,8 +154,10 @@ public class GetEventThread extends Thread {
                                 order.device_type = "door";
                                 order.createTime = new Date().getTime() + "";
                                 order.state = "untreated";
-                                order.producer = "sys";
                                 order.islast = 1;
+								if (deviceInfoList != null) {
+									order.item = deviceInfoList.item;
+								}
                                 int counts = Order.finder.where()
                                         .eq("device_id", devices.id)
                                         .eq("type", 1)
