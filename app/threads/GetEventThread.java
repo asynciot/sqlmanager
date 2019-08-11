@@ -172,6 +172,7 @@ public class GetEventThread extends Thread {
                         } else if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
                             Order orderlast = Order.finder.where()
                                     .eq("device_id", devices.id)
+                                    .eq("type", 1)
                                     .notIn("code", 179)
                                     .eq("islast", 1)
                                     .notIn("state", "treated")
@@ -324,6 +325,16 @@ public class GetEventThread extends Thread {
                         remind = Long.parseLong(deviceInfo.inspection_remind);
                         nexttime = Long.parseLong(deviceInfo.inspection_nexttime);
                         if (nowl + remind > nexttime && nowl < nexttime) {
+                            int counts = Order.finder.where()
+                                    .eq("device_id", runtime.device_id)
+                                    .eq("type", "3")
+                                    .eq("code", "1")
+                                    .eq("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door")
+                                    .notIn("state", "treated")
+                                    .findRowCount();
+                            if (counts != 0) {
+                                break;
+                            }
                             String url = "http://127.0.0.1:9006/device/alert";
                             Map<String, Object> result = new HashMap<String, Object>();
                             result.put("code", "1");
