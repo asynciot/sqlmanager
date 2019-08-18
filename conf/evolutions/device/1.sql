@@ -39,6 +39,36 @@ create table credentials (
   constraint pk_credentials primary key (id)
 );
 
+create table device_info (
+  id                            integer auto_increment not null,
+  imei                          varchar(255),
+  iplocation_id                 integer,
+  cellocation_id                integer,
+  device_name                   varchar(255),
+  maintenance_type              varchar(255),
+  maintenance_nexttime          varchar(255),
+  maintenance_remind            varchar(255),
+  maintenance_lasttime          varchar(255),
+  inspection_type               varchar(255),
+  inspection_lasttime           varchar(255),
+  inspection_nexttime           varchar(255),
+  inspection_remind             varchar(255),
+  install_date                  varchar(255),
+  install_addr                  varchar(255),
+  register                      varchar(255),
+  tagcolor                      varchar(255),
+  state                         varchar(255),
+  device_type                   varchar(255),
+  commond                       varchar(255),
+  delay                         varchar(255),
+  rssi                          integer,
+  runtime_state                 integer,
+  group_id                      integer,
+  ladder_id                     varchar(255),
+  item                          varchar(255),
+  constraint pk_device_info primary key (id)
+);
+
 create table devices (
   id                            integer auto_increment not null,
   t_create                      datetime(6),
@@ -124,6 +154,8 @@ drop table if exists binaries;
 drop table if exists commands;
 
 drop table if exists credentials;
+
+drop table if exists device_info;
 
 drop table if exists devices;
 

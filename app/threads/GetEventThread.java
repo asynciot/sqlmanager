@@ -1,6 +1,7 @@
 package threads;
 
 import com.avaje.ebean.Ebean;
+
 import com.avaje.ebean.SqlRow;
 import com.avaje.ebean.Expr;
 import com.avaje.ebean.ExpressionList;
@@ -9,19 +10,17 @@ import com.sun.javafx.css.parser.LadderConverter;
 import controllers.CommonConfig;
 import device.models.Devices;
 import device.models.DeviceInfo;
+
+import controllers.CommonConfig;
+
 import device.models.Events;
-import device.models.Monitor;
-import device.models.Runtime;
 import ladder.models.Order;
+
 import ladder.models.Ladder;
+
 import play.Logger;
-import play.libs.Json;
-import play.libs.ws.WS;
-import play.libs.ws.WSResponse;
 
 import java.util.*;
-import java.util.concurrent.CompletionStage;
-
 /**
  * Created by lengxia on 2018/11/28.
  */
@@ -209,167 +208,7 @@ public class GetEventThread extends Thread {
         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_events);
     }
 
-    public void update_runtime() {
-        List<Runtime> runtimeList = null;
-        List<Order> save_order = new ArrayList<Order>();
-        if (init_device) {
-            runtimeList = Runtime.finder.where().findList();
-        } else {
-            runtimeList = Runtime.finder.where().isNotNull("t_update").gt("t_update", old_datex).findList();
-        }
 
-        List<ladder.models.Runtime> save_runtime = new ArrayList<ladder.models.Runtime>();
-        List<ladder.models.Runtime> delete_runtime = new ArrayList<ladder.models.Runtime>();
-        for (Runtime runtime : runtimeList) {
-            if (old_datex.getTime() >= runtime.t_update.getTime() && init_device == false) {
-                continue;
-            }
-            ladder.models.Runtime ladder_runtime = new ladder.models.Runtime();
-            ladder_runtime.id = runtime.id;
-            ladder_runtime.data = runtime.data;
-            ladder_runtime.device_id = runtime.device_id;
-            ladder_runtime.t_update = runtime.t_update;
-            ladder_runtime.type = runtime.type;
-            save_runtime.add(ladder_runtime);
-            List<ladder.models.Runtime> runtime1 = ladder.models.Runtime.finder.where().eq("device_id", runtime.device_id).eq("type", runtime.type).findList();
-            if (runtime1 != null && runtime1.size() > 0) {
-                delete_runtime.addAll(runtime1);
-            }
-            if(runtime.type == 8192){
-                byte[] buffer = runtime.data;
-                int bufferData = (((buffer[8]&0xff))&0x20)>>5;
-                if( bufferData==0){
-                    Order orderlast = Order.finder.where()
-                            .eq("device_id", runtime.device_id)
-                            .eq("type", 1)
-                            .eq("device_type", "ctrl")
-                            .eq("islast", 1)
-                            .notIn("state", "treated")
-                            .findUnique();
-                    if (orderlast != null) {
-                        orderlast.state = "treated";
-                        save_order.add(orderlast);
-                        Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
-                    }
-                }
-            }
-            if (runtime.type == 4096 || runtime.type == 8192) {
-                try {
-                    Integer rssi = null;
-                    Integer runtime_state = null;
-                    Integer alert = null;
-                    String type = null;
-                    if (runtime.type == 4096) {
-                        rssi = runtime.data[4] & 0xff;
-                        runtime_state = runtime.data[7] & 0xff;
-                        alert = runtime.data[7] & 0x03 + (runtime.data[8] & 0xf0);
-                        type = "door";
-                    }
-                    if (runtime.type == 8192) {
-                        rssi = runtime.data[4] & 0xff;
-                        runtime_state = runtime.data[8] & 0xff;
-                        alert = runtime.data[18] & 0xff;
-                        type = "ctrl";
-                    }
-                    if ((type == "door" && alert == 2) || (type == "ctrl" && (alert != 16 || alert != 18))) {
-                        String sql = String.format("UPDATE ladder.device_info set rssi=%d,runtime_state=%d where id=%d", rssi, runtime_state, runtime.device_id);
-                        Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
-
-                        byte[] buffer = runtime.data;
-                        int bufferData = (((buffer[8]&0xff))&0x20)>>5;
-                        if(bufferData==1){
-                            String url = "http://127.0.0.1:9006/device/alert";
-                            Map<String, Object> result = new HashMap<String, Object>();
-                            result.put("code", alert);
-                            result.put("device_id", runtime.device_id);
-                            result.put("device_type", type);
-                            result.put("producer", "sys");
-                            result.put("type", "1");
-                            CompletionStage<JsonNode> jsonPromise = WS.url(url)
-                                    .setRequestTimeout(TIME_OUT)
-                                    .setContentType("application/json")
-                                    .post(Json.toJson(result))
-                                    .thenApply(WSResponse::asJson);
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-            }
-            new_datex = new_datex.getTime() > runtime.t_update.getTime() ? new_datex : runtime.t_update;
-
-            try {
-                DeviceInfo deviceInfo = DeviceInfo.finder.byId(runtime.device_id);
-                if (deviceInfo != null) {
-                    long nowl = new Date().getTime();
-                    long remind = 0;
-                    long nexttime = 0;
-                    if (deviceInfo.maintenance_remind != null && deviceInfo.maintenance_nexttime != null) {
-                        remind = Long.parseLong(deviceInfo.maintenance_remind);
-                        nexttime = Long.parseLong(deviceInfo.maintenance_nexttime);
-                        if (nowl + remind > nexttime && nowl < nexttime) {
-                            int counts = Order.finder.where()
-                                    .eq("device_id", runtime.device_id)
-                                    .eq("type", "2")
-                                    .eq("code", "1")
-                                    .eq("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door")
-                                    .notIn("state", "treated")
-                                    .findRowCount();
-                            if (counts != 0) {
-                                break;
-                            }
-                            String url = "http://127.0.0.1:9006/device/alert";
-                            Map<String, Object> result = new HashMap<String, Object>();
-                            result.put("code", "1");
-                            result.put("device_id", runtime.device_id);
-                            result.put("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door");
-                            result.put("producer", "sys");
-                            result.put("type", "2");
-                            CompletionStage<JsonNode> jsonPromise = WS.url(url)
-                                    .setRequestTimeout(TIME_OUT)
-                                    .setContentType("application/json")
-                                    .post(Json.toJson(result))
-                                    .thenApply(WSResponse::asJson);
-                        }
-                    }
-                    if (deviceInfo.inspection_remind != null && deviceInfo.inspection_nexttime != null) {
-                        remind = Long.parseLong(deviceInfo.inspection_remind);
-                        nexttime = Long.parseLong(deviceInfo.inspection_nexttime);
-                        if (nowl + remind > nexttime && nowl < nexttime) {
-                            int counts = Order.finder.where()
-                                    .eq("device_id", runtime.device_id)
-                                    .eq("type", "3")
-                                    .eq("code", "1")
-                                    .eq("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door")
-                                    .notIn("state", "treated")
-                                    .findRowCount();
-                            if (counts != 0) {
-                                break;
-                            }
-                            String url = "http://127.0.0.1:9006/device/alert";
-                            Map<String, Object> result = new HashMap<String, Object>();
-                            result.put("code", "1");
-                            result.put("device_id", runtime.device_id);
-                            result.put("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door");
-                            result.put("producer", "sys");
-                            result.put("type", "3");
-                            CompletionStage<JsonNode> jsonPromise = WS.url(url)
-                                    .setRequestTimeout(TIME_OUT)
-                                    .setContentType("application/json")
-                                    .post(Json.toJson(result))
-                                    .thenApply(WSResponse::asJson);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        Ebean.getServer(CommonConfig.LADDER_SERVER).deleteAll(delete_runtime);
-        Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_runtime);
-
-    }
 
     @Override
     public void run() {
@@ -377,7 +216,6 @@ public class GetEventThread extends Thread {
             try {
                 Thread.sleep(500);
                 update_event();
-                update_runtime();
                 Logger.info("Move EventInfo from db1 to db2 ok at :" + new_datex);
                 old_datex = new_datex;
                 if (init_device == true) {

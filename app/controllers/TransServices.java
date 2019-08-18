@@ -26,5 +26,4 @@ public class TransServices {
         new Thread(new GetOffThread()).start();
         new Thread(new GetEventThread()).start();
     }
-
 }
