@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.javafx.css.parser.LadderConverter;
 import controllers.CommonConfig;
 import device.models.Devices;
+import device.models.DeviceInfo;
 import device.models.Runtime;
 import ladder.models.Ladder;
 import ladder.models.Offline;
@@ -49,6 +50,20 @@ public class GetOffThread extends Thread {
             new_datex=new_datex.getTime()>devices.t_logout.getTime()?new_datex:devices.t_logout;
         }
         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_offline);
+		
+		String time=(new Date().getTime()-28800000)+"";
+		List<Devices> operating=null;
+		operating = Devices.finder.where().isNotNull("t_logout").le("t_logout",time).findList();
+		List<DeviceInfo> nodate=null;
+		nodate = DeviceInfo.finder.where().isNotNull("install_date").in("id",operating.id).findList();
+		List<DeviceInfo> save=new ArrayList<DeviceInfo>();
+		for(DeviceInfo adddate : nodate){
+			DeviceInfo add  = new device.models.DeviceInfo();
+			add = adddate;
+			add.install_date=time;
+			save.add(add);
+		}
+		Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save);
     }
 
     @Override
