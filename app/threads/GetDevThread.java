@@ -6,7 +6,6 @@ import controllers.CommonConfig;
 import device.models.Devices;
 import device.models.Runtime;
 import ladder.models.Ladder;
-import ladder.models.Offline;
 import ladder.models.DeviceInfo;
 import ladder.models.Order;
 import play.Logger;
@@ -22,32 +21,28 @@ import java.util.concurrent.CompletionStage;
  */
 public class GetDevThread extends Thread {
 
-    public static Date old_datex=new Date();
-    public static Date old_logout=new Date();
-    public static Date new_datex=new Date();
-    public static Date datex_one=new Date();
-    public static Date datex_two=new Date();
-    public static boolean init_device=true;
-    private static int TIME_OUT = 5000;
+    private static Date old_date =new Date();
+    private static Date new_date =new Date();
+    private static boolean init_device=true;
+
     public GetDevThread(){
         Logger.info("create GetInfo Thread ok");
     }
 
-    public void update_device(){
-        List<Devices> devicesList=null;
+    private void update_device(){
+        List<Devices> devicesList;
         if(init_device){
             devicesList= Devices.finder.where().findList();
         }
         else {
-            devicesList = Devices.finder.where().isNotNull("t_update").gt("t_update",old_datex).findList();
+            devicesList = Devices.finder.where().isNotNull("t_update").gt("t_update", old_date).findList();
         }
-        List<ladder.models.Devices> save_devices=new ArrayList<ladder.models.Devices>();
-        List<ladder.models.Devices> delete_devices=new ArrayList<ladder.models.Devices>();
-        List<DeviceInfo> deviceInfoList=new ArrayList<DeviceInfo>();
-        List<Ladder> ladderList=new ArrayList<Ladder>();
-        List<Offline> save_offline=new ArrayList<Offline>();
+        List<ladder.models.Devices> save_devices=new ArrayList<>();
+        List<ladder.models.Devices> delete_devices= new ArrayList<>();
+        List<DeviceInfo> deviceInfoList= new ArrayList<>();
+        List<Ladder> ladderList= new ArrayList<>();
         for(Devices devices : devicesList){
-            if(old_datex.getTime()>=devices.t_update.getTime()&&init_device==false){
+            if(old_date.getTime()>=devices.t_update.getTime()&&!init_device){
                 continue;
             }
             ladder.models.Devices mamodel= ladder.models.Devices.finder.byId(devices.id);
@@ -107,37 +102,37 @@ public class GetDevThread extends Thread {
                 ladderList.add(ladder_one);
             }
             save_devices.add(machine_device);
-            new_datex=new_datex.getTime()>devices.t_update.getTime()?new_datex:devices.t_update;
+            new_date = new_date.getTime()>devices.t_update.getTime()? new_date :devices.t_update;
         }
         Ebean.getServer(CommonConfig.LADDER_SERVER).deleteAll(delete_devices);
         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_devices);
         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(deviceInfoList);
         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(ladderList);
 
-        datex_one=new Date();
-        datex_two=new Date();
-        datex_one.setMinutes(datex_one.getMinutes()-5);
-        datex_two.setMinutes(datex_two.getMinutes()-30);
-        devicesList=Devices.finder.where().le("t_update",datex_one).findList();
+        Date date_one = new Date();
+        Date date_two = new Date();
+        date_one.setMinutes(date_one.getMinutes()-5);
+        date_two.setMinutes(date_two.getMinutes()-30);
+        devicesList=Devices.finder.where().le("t_update", date_one).findList();
         for(Devices devices:devicesList){
             String sql= String.format("UPDATE ladder.device_info set state='%s' where imei='%s'","longoffline", devices.IMEI);
             Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
         }
     }
 
-    public void update_runtime() {
-        List<Runtime> runtimeList = null;
-        List<Order> save_order = new ArrayList<Order>();
+    private void update_runtime() {
+        List<Runtime> runtimeList;
+        List<Order> save_order = new ArrayList<>();
         if (init_device) {
             runtimeList = Runtime.finder.where().findList();
         } else {
-            runtimeList = Runtime.finder.where().isNotNull("t_update").gt("t_update", old_datex).findList();
+            runtimeList = Runtime.finder.where().isNotNull("t_update").gt("t_update", old_date).findList();
         }
 
-        List<ladder.models.Runtime> save_runtime = new ArrayList<ladder.models.Runtime>();
-        List<ladder.models.Runtime> delete_runtime = new ArrayList<ladder.models.Runtime>();
+        List<ladder.models.Runtime> save_runtime = new ArrayList<>();
+        List<ladder.models.Runtime> delete_runtime = new ArrayList<>();
         for (Runtime runtime : runtimeList) {
-            if (old_datex.getTime() >= runtime.t_update.getTime() && init_device == false) {
+            if (old_date.getTime() >= runtime.t_update.getTime() && !init_device) {
                 continue;
             }
             ladder.models.Runtime ladder_runtime = new ladder.models.Runtime();
@@ -169,6 +164,7 @@ public class GetDevThread extends Thread {
                     }
                 }
             }
+            int TIME_OUT = 5000;
             if (runtime.type == 4096 || runtime.type == 8192) {
                 try {
                     Integer rssi = null;
@@ -187,7 +183,7 @@ public class GetDevThread extends Thread {
                         alert = runtime.data[18] & 0xff;
                         type = "ctrl";
                     }
-                    if ((type == "door" && alert == 2) || (type == "ctrl" && (alert != 16 || alert != 18))) {
+                    if ((type.equals("door") && alert == 2) || (type.equals("ctrl") && (alert != 16 && alert != 18))) {
                         String sql = String.format("UPDATE ladder.device_info set rssi=%d,runtime_state=%d where id=%d", rssi, runtime_state, runtime.device_id);
                         Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
 
@@ -195,7 +191,7 @@ public class GetDevThread extends Thread {
                         int bufferData = (((buffer[8]&0xff))&0x20)>>5;
                         if(bufferData==1){
                             String url = "http://127.0.0.1:9006/device/alert";
-                            Map<String, Object> result = new HashMap<String, Object>();
+                            Map<String, Object> result = new HashMap<>();
                             result.put("code", alert);
                             result.put("device_id", runtime.device_id);
                             result.put("device_type", type);
@@ -213,18 +209,18 @@ public class GetDevThread extends Thread {
                 }
 
             }
-            new_datex = new_datex.getTime() > runtime.t_update.getTime() ? new_datex : runtime.t_update;
+            new_date = new_date.getTime() > runtime.t_update.getTime() ? new_date : runtime.t_update;
 
             try {
                 DeviceInfo deviceInfo = DeviceInfo.finder.byId(runtime.device_id);
                 if (deviceInfo != null) {
-                    long nowl = new Date().getTime();
-                    long remind = 0;
-                    long nexttime = 0;
+                    long now = new Date().getTime();
+                    long remind;
+                    long nexttime;
                     if (deviceInfo.maintenance_remind != null && deviceInfo.maintenance_nexttime != null) {
                         remind = Long.parseLong(deviceInfo.maintenance_remind);
                         nexttime = Long.parseLong(deviceInfo.maintenance_nexttime);
-                        if (nowl + remind > nexttime && nowl < nexttime) {
+                        if (now + remind > nexttime && now < nexttime) {
                             int counts = Order.finder.where()
                                     .eq("device_id", runtime.device_id)
                                     .eq("type", "2")
@@ -236,7 +232,7 @@ public class GetDevThread extends Thread {
                                 break;
                             }
                             String url = "http://127.0.0.1:9006/device/alert";
-                            Map<String, Object> result = new HashMap<String, Object>();
+                            Map<String, Object> result = new HashMap<>();
                             result.put("code", "1");
                             result.put("device_id", runtime.device_id);
                             result.put("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door");
@@ -252,7 +248,7 @@ public class GetDevThread extends Thread {
                     if (deviceInfo.inspection_remind != null && deviceInfo.inspection_nexttime != null) {
                         remind = Long.parseLong(deviceInfo.inspection_remind);
                         nexttime = Long.parseLong(deviceInfo.inspection_nexttime);
-                        if (nowl + remind > nexttime && nowl < nexttime) {
+                        if (now + remind > nexttime && now < nexttime) {
                             int counts = Order.finder.where()
                                     .eq("device_id", runtime.device_id)
                                     .eq("type", "3")
@@ -264,7 +260,7 @@ public class GetDevThread extends Thread {
                                 break;
                             }
                             String url = "http://127.0.0.1:9006/device/alert";
-                            Map<String, Object> result = new HashMap<String, Object>();
+                            Map<String, Object> result = new HashMap<>();
                             result.put("code", "1");
                             result.put("device_id", runtime.device_id);
                             result.put("device_type", deviceInfo.device_type.equals("240") ? "ctrl" : "door");
@@ -293,10 +289,9 @@ public class GetDevThread extends Thread {
                 Thread.sleep(1000);
                 update_device();
                 update_runtime();
-                Logger.info("Move Info from db1 to db2 ok at :"+new_datex);
-                old_datex=new_datex;
-                old_logout=new_datex;
-                if(init_device==true){
+                Logger.info("Move Info from db1 to db2 ok at :"+ new_date);
+                old_date = new_date;
+                if(init_device){
                     Logger.info("init ok");
                     init_device=false;
                 }

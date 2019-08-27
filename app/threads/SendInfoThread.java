@@ -16,14 +16,14 @@ import java.util.List;
  */
 public class SendInfoThread extends Thread{
 
-    public static Date old_datex=new Date();
-    public static Date new_datex=new Date();
+    private static Date old_date =new Date();
+    private static Date new_date =new Date();
 
     public SendInfoThread(){
         Logger.info("create SendInfo Thread ok");
     }
 
-    public  void stop_monitor(int device_id){
+    private void stop_monitor(int device_id){
         if(CommonConfig.device_monitor_set.contains(device_id)){
             CommonConfig.device_monitor_set.remove(device_id);
             ladder.models.Monitor ladder_monitor=new ladder.models.Monitor();
@@ -35,12 +35,11 @@ public class SendInfoThread extends Thread{
         }
     }
 
-    public  void snedCommond(){
-
-        List<ladder.models.Commands> commandList=ladder.models.Commands.finder.where().isNotNull("submit").gt("submit",old_datex).findList();
-        List<Commands> save_commands=new ArrayList<Commands>();
+    private void sendCommand(){
+        List<ladder.models.Commands> commandList=ladder.models.Commands.finder.where().isNotNull("submit").gt("submit", old_date).findList();
+        List<Commands> save_commands= new ArrayList<>();
         for(ladder.models.Commands command: commandList){
-            if(old_datex.getTime()>=command.submit.getTime()){
+            if(old_date.getTime()>=command.submit.getTime()){
                 continue;
             }
             ladder.models.Devices devices = ladder.models.Devices.finder.where().eq("IMEI",command.IMEI).findUnique();
@@ -66,7 +65,7 @@ public class SendInfoThread extends Thread{
             device_command.IMEI=command.IMEI;
             device_command.binary=command.binary;
             save_commands.add(device_command);
-            new_datex= command.submit.getTime()>new_datex.getTime()? command.submit:new_datex;
+            new_date = command.submit.getTime()> new_date.getTime()? command.submit: new_date;
                 //下发监视命令，监视墙device_monitor_set开启
             if(command.command.equals("MONITOR")&&command.int1!=0){
                 CommonConfig.device_monitor_set.add(devices.id);
@@ -109,7 +108,6 @@ public class SendInfoThread extends Thread{
 /*
         for(Commands command:save_commands){
             if(command.command.equals("MONITOR")){
-
                 new Thread(){
                     public void run(){
                         monitorTest.Insert_db3_Test(command.id);
@@ -122,16 +120,15 @@ public class SendInfoThread extends Thread{
                         monitorTest.Insert_db4_Test(command.id);
                     }
                 }.start();
-
             }
         }
 */
     }
-    public  void sendbinary(){
-        List<ladder.models.Binaries> binariesList = ladder.models.Binaries.finder.where().isNotNull("t_create").gt("t_create",old_datex).findList();
-        List<Binaries> save_binaries =new ArrayList<Binaries>();
+    private void sendbinary(){
+        List<ladder.models.Binaries> binariesList = ladder.models.Binaries.finder.where().isNotNull("t_create").gt("t_create", old_date).findList();
+        List<Binaries> save_binaries = new ArrayList<>();
         for(ladder.models.Binaries binaries : binariesList){
-            if(old_datex.getTime()>= binaries.t_create.getTime()){
+            if(old_date.getTime()>= binaries.t_create.getTime()){
                 continue;
             }
             Binaries device_binaries =new Binaries();
@@ -142,7 +139,7 @@ public class SendInfoThread extends Thread{
             if(binaries1 !=null){
                 Ebean.getServer(CommonConfig.DEVICE_SERVER).delete(binaries1);
             }
-            new_datex= binaries.t_create.getTime()>new_datex.getTime()? binaries.t_create:new_datex;
+            new_date = binaries.t_create.getTime()> new_date.getTime()? binaries.t_create: new_date;
             save_binaries.add(device_binaries);
         }
         Ebean.getServer(CommonConfig.DEVICE_SERVER).saveAll(save_binaries);
@@ -153,10 +150,10 @@ public class SendInfoThread extends Thread{
         while (true){
             try{
                 Thread.sleep(500);
-                snedCommond();
+                sendCommand();
                 sendbinary();
-                Logger.info("Move Info from db2 to db1 ok at :"+new_datex);
-                old_datex=new_datex;
+                Logger.info("Move Info from db2 to db1 ok at :"+ new_date);
+                old_date = new_date;
             }catch (Exception e){
                 e.printStackTrace();
             }

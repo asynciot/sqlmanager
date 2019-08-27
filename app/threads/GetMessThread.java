@@ -27,8 +27,7 @@ public class GetMessThread extends Thread {
         Logger.info("creat Get Mess Thread ok");
     }
 
-
-    public  Integer cell2addr(int mcc, int mnc, int lac, int ci){
+    private  Integer cell2addr(int mcc, int mnc, int lac, int ci){
         Cellocation cellocation=Cellocation.finder.where().eq("cell_mcc",mcc).eq("cell_mnc",mnc).eq("cell_lac",lac).eq("cell_cid",ci).findUnique();
         if(cellocation!=null)return cellocation.id;
         try {
@@ -62,7 +61,8 @@ public class GetMessThread extends Thread {
         }
         return null;
     }
-    public Integer iptoaddr(String ip){
+
+    private Integer iptoaddr(String ip){
         IPlocation iploc=IPlocation.finder.where().eq("ip",ip).findUnique();
         if(iploc!=null){return iploc.id;}
 
@@ -76,7 +76,6 @@ public class GetMessThread extends Thread {
                     .thenApply(WSResponse::asJson);
             JsonNode retVal = jsonPromise.toCompletableFuture().get();
             if(retVal.get("code").asInt()==0){
-
                 retVal=retVal.get("data");
                 IPlocation iPlocation=new IPlocation();
                 iPlocation.city=retVal.get("city").asText();
@@ -104,7 +103,6 @@ public class GetMessThread extends Thread {
     }
     @Override
     public void run() {
-
         while (true){
             try {
                 List<DeviceInfo> deviceInfoList;

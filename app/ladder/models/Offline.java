@@ -21,6 +21,8 @@ public class Offline extends Model {
 
     public Date t_logout;
 
+    public Integer duration;
+
     public static Finder<Integer, Offline> finder =
             new Finder<Integer, Offline>(CommonConfig.LADDER_SERVER,Integer.class, Offline.class){};
 }

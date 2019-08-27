@@ -1,41 +1,27 @@
 package threads;
 
 import com.avaje.ebean.Ebean;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.sun.javafx.css.parser.LadderConverter;
 import controllers.CommonConfig;
-import device.models.Devices;
-import device.models.Events;
 import device.models.Monitor;
-import device.models.Runtime;
-import ladder.models.Ladder;
-import ladder.models.DeviceInfo;
 import play.Logger;
-import play.libs.Json;
-import play.libs.ws.WS;
-import play.libs.ws.WSResponse;
 
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 
 /**
  * Created by lengxia on 2018/11/28.
  */
 public class GetInfoThread extends Thread {
 
-    public static Date old_datex=new Date();
-    public static Date new_datex=new Date();
-    public static Date datex_one=new Date();
-    public static Date datex_two=new Date();
-    public static boolean init_device=true;
-    private static int TIME_OUT = 5000;
+    private static Date old_datex=new Date();
+    private static Date new_datex=new Date();
+    private static boolean init_device=true;
     public GetInfoThread(){
         Logger.info("create GetInfo Thread ok");
     }
 
-    public void update_monitor(){
+    private void update_monitor(){
         List<Monitor> monitorList= Monitor.finder.where().isNotNull("time").gt("time",old_datex).findList();
-        List<ladder.models.Monitor> new_monitorList=new ArrayList<ladder.models.Monitor>();
+        List<ladder.models.Monitor> new_monitorList= new ArrayList<>();
 
         Logger.error(monitorList.size()+"----");
         for(Monitor monitor:monitorList){
@@ -57,6 +43,7 @@ public class GetInfoThread extends Thread {
                     String sql= String.format("UPDATE ladder.device_info set commond='%s' where id=%d","ok",monitor.device_id);
                     Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
                     CommonConfig.device_monitor_set.remove(monitor.device_id);
+                    new_datex = new Date();
                 }
             }
         }
@@ -69,8 +56,8 @@ public class GetInfoThread extends Thread {
                 Thread.sleep(1000);
                 update_monitor();
                 Logger.info("Move monitor from db1 to db2 ok at :"+new_datex);
-                old_datex=new Date();
-                if(init_device==true){
+                old_datex=new_datex;
+                if(init_device){
                     Logger.info("init ok");
                     init_device=false;
                 }
