@@ -10,7 +10,7 @@ import java.util.*;
 
 public class GetOffThread extends Thread {
 
-    private static Date old_logout=new Date();
+    private static Date old_logon =new Date();
     private static Date new_date =new Date();
     private static boolean init_device=true;
     public GetOffThread(){
@@ -18,21 +18,21 @@ public class GetOffThread extends Thread {
     }
 
     private void update_offline(){
-        List<Devices> devicesList = Devices.finder.where().isNotNull("t_logout").gt("t_logout",old_logout).findList();
+        List<Devices> devicesList = Devices.finder.where().isNotNull("t_logon").gt("t_logon", old_logon).findList();
         List<Offline> save_offline= new ArrayList<>();
         for(Devices devices : devicesList){
-            if(old_logout.getTime()>devices.t_logout.getTime()&&!init_device){
+            if(old_logon.getTime()>devices.t_logon.getTime()&&!init_device){
                 continue;
             }
             ladder.models.Devices ladder_device = ladder.models.Devices.finder.byId(devices.id);
-            if(ladder_device != null && devices.t_logout.getTime()>ladder_device.t_logout.getTime()){
+            if(ladder_device != null && devices.t_logon.getTime()>ladder_device.t_logon.getTime()){
                 Offline offline  = new ladder.models.Offline();
                 offline.device_id = devices.id;
                 offline.t_logout = devices.t_logout;
-                offline.duration = Math.toIntExact(devices.t_logout.getTime() - devices.t_logon.getTime());
+                offline.duration = Math.toIntExact(devices.t_logon.getTime() - devices.t_logout.getTime());
                 save_offline.add(offline);
             }
-            new_date = new_date.getTime()>devices.t_logout.getTime()? new_date :devices.t_logout;
+            new_date = new_date.getTime()>devices.t_logon.getTime()? new_date :devices.t_logon;
         }
         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_offline);
     }
@@ -43,8 +43,8 @@ public class GetOffThread extends Thread {
             try{
                 Thread.sleep(1000);
                 update_offline();
-                Logger.info("Devices offline :"+old_logout);
-                old_logout= new_date;
+                Logger.info("Devices offline :"+ old_logon);
+                old_logon = new_date;
                 if(init_device){
                     Logger.info("init ok");
                     init_device=false;

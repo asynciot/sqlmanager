@@ -4,6 +4,7 @@ import com.avaje.ebean.Ebean;
 import controllers.CommonConfig;
 import device.models.Events;
 import ladder.models.Order;
+
 import play.Logger;
 
 import java.util.*;
@@ -152,6 +153,7 @@ public class GetEventThread extends Thread {
                                     }
                                     save_order.add(order);
                                     Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
+
                                 }
                                 break;
                             } else if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
