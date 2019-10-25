@@ -157,6 +157,7 @@ create table ladder (
   door2                         varchar(255),
   install_addr                  varchar(255),
   state                         varchar(255),
+  item                          varchar(255),
   constraint pk_ladder primary key (id)
 );
 
@@ -184,6 +185,7 @@ create table offline (
   id                            integer auto_increment not null,
   device_id                     integer,
   t_logout                      datetime(6),
+  duration                      integer,
   constraint pk_offline primary key (id)
 );
 

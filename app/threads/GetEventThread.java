@@ -43,6 +43,19 @@ public class GetEventThread extends Thread {
                     int count = 0;
                     for (int i = 0; i < events.data.length / 8; i++) {
                         if (devices.model.equals("1")) {
+                            if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
+                                Order orderList = Order.finder.where()
+                                        .eq("device_id", devices.id)
+                                        .notIn("type", 179)
+                                        .eq("islast", 1)
+                                        .notIn("state", "treated")
+                                        .findUnique();
+                                if (orderList != null) {
+                                    orderList.state = "treated";
+                                    save_order.add(orderList);
+                                }
+                                Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
+                            }
                             if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>1000) {
                                 count = 1;
                                 if (devices.order_times == null) {
@@ -92,10 +105,13 @@ public class GetEventThread extends Thread {
                                     Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                                 }
                                 break;
-                            } else if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
+                            }
+                        } else if (devices.model.equals("2")) {
+                            if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
                                 Order orderList = Order.finder.where()
                                         .eq("device_id", devices.id)
-                                        .notIn("type", 179)
+                                        .eq("type", 1)
+                                        .notIn("code", 179)
                                         .eq("islast", 1)
                                         .notIn("state", "treated")
                                         .findUnique();
@@ -105,7 +121,6 @@ public class GetEventThread extends Thread {
                                 }
                                 Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                             }
-                        } else if (devices.model.equals("2")) {
                             if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>2500) {
                                 count = 1;
                                 if (devices.order_times == null) {
@@ -153,22 +168,8 @@ public class GetEventThread extends Thread {
                                     }
                                     save_order.add(order);
                                     Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
-
                                 }
                                 break;
-                            } else if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
-                                Order orderList = Order.finder.where()
-                                        .eq("device_id", devices.id)
-                                        .eq("type", 1)
-                                        .notIn("code", 179)
-                                        .eq("islast", 1)
-                                        .notIn("state", "treated")
-                                        .findUnique();
-                                if (orderList != null) {
-                                    orderList.state = "treated";
-                                    save_order.add(orderList);
-                                }
-                                Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                             }
                         }
                     }

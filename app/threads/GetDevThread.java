@@ -37,6 +37,7 @@ public class GetDevThread extends Thread {
         else {
             devicesList = Devices.finder.where().isNotNull("t_update").gt("t_update", old_date).findList();
         }
+
         List<ladder.models.Devices> save_devices=new ArrayList<>();
         List<ladder.models.Devices> delete_devices= new ArrayList<>();
         List<DeviceInfo> deviceInfoList= new ArrayList<>();
@@ -96,9 +97,10 @@ public class GetDevThread extends Thread {
                 String sql= String.format("UPDATE ladder.device_info set register='%s',state='%s' where imei='%s'",register,"online", devices.IMEI);
                 Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
             }
-            Ladder ladder_one = Ladder.finder.where().eq("ctrl_id",deviceInfo.id).findUnique();
+            DeviceInfo device_Info= DeviceInfo.finder.where().eq("id",devices.id).findUnique();
+            Ladder ladder_one = Ladder.finder.where().eq("ctrl_id",devices.id).findUnique();
             if(ladder_one!=null){
-                ladder_one.state = deviceInfo.state;
+                ladder_one.state = device_Info.state;
                 ladderList.add(ladder_one);
             }
             save_devices.add(machine_device);
@@ -116,7 +118,9 @@ public class GetDevThread extends Thread {
         devicesList=Devices.finder.where().le("t_update", date_one).findList();
         for(Devices devices:devicesList){
             String sql= String.format("UPDATE ladder.device_info set state='%s' where imei='%s'","longoffline", devices.IMEI);
+            String sql2= String.format("UPDATE ladder.ladder set state='%s' where ctrl_id='%s'","longoffline", devices.id);
             Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
+            Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql2).execute();
         }
     }
 
@@ -150,16 +154,16 @@ public class GetDevThread extends Thread {
                 byte[] buffer = runtime.data;
                 int bufferData = (((buffer[8]&0xff))&0x20)>>5;
                 if( bufferData==0){
-                    Order orderlast = Order.finder.where()
+                    Order orderLast = Order.finder.where()
                             .eq("device_id", runtime.device_id)
                             .eq("type", 1)
                             .eq("device_type", "ctrl")
                             .eq("islast", 1)
                             .notIn("state", "treated")
                             .findUnique();
-                    if (orderlast != null) {
-                        orderlast.state = "treated";
-                        save_order.add(orderlast);
+                    if (orderLast != null) {
+                        orderLast.state = "treated";
+                        save_order.add(orderLast);
                         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                     }
                 }

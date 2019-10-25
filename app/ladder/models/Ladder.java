@@ -29,6 +29,8 @@ public class Ladder extends Model {
 
     public String state;
 
+    public String item;
+
     public static Finder<Integer, Ladder> finder =
             new Finder<Integer, Ladder>(CommonConfig.LADDER_SERVER,Integer.class,Ladder.class){};
 }
