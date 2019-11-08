@@ -6,7 +6,10 @@ import device.models.Events;
 import ladder.models.Order;
 
 import play.Logger;
+import sun.rmi.runtime.Log;
 
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
 import java.util.*;
 /**
  * Created by lengxia on 2018/11/28.
@@ -24,166 +27,191 @@ public class GetEventThread extends Thread {
     private void update_event() {
         List<Events> eventsList = Events.finder.where().isNotNull("time").gt("time", old_datex).findList();
         List<ladder.models.Events> save_events = new ArrayList<>();
+        List<ladder.models.SimplifyEvents> simplifyEvents = new ArrayList<>();
         List<ladder.models.Devices> devicesList = new ArrayList<>();
         List<Order> save_order = new ArrayList<>();
         for (Events events : eventsList) {
             ladder.models.Devices devices = ladder.models.Devices.finder.byId(events.device_id);
+            if (devices == null ){
+                break;
+            }
             if (old_datex.getTime() >= events.time.getTime()) {
                 continue;
             }
             ladder.models.Events ladder_event = new ladder.models.Events();
+            ladder.models.SimplifyEvents simplify_event = new ladder.models.SimplifyEvents();
             ladder_event.data = events.data;
+            ladder_event.id = events.id;
             ladder_event.device_id = events.device_id;
             ladder_event.interval = events.interval;
             ladder_event.length = events.length;
             ladder_event.time = events.time;
-            if(devices!=null){
-                if (devices.device.equals("15")) {
-                    byte[] buffer = events.data;
-                    int count = 0;
-                    for (int i = 0; i < events.data.length / 8; i++) {
-                        if (devices.model.equals("1")) {
-                            if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
+
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String date = sdf.format(events.time.getTime()+events.length*events.interval);
+            try {
+                simplify_event.end_time = sdf.parse(date);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            simplify_event.id = events.id;
+            simplify_event.device_id = events.device_id;
+            simplify_event.start_time = events.time;
+            simplify_event.device_type = devices.device;
+
+            if (devices.device.equals("15")) {
+                byte[] buffer = events.data;
+                int count = 0;
+                if((buffer[(events.data.length/8-1)*8]&0x80)>>7==1){
+                    simplify_event.event_type = "open";
+                }else if((buffer[(events.data.length/8-1)*8]&0x40)>>6==1){
+                    simplify_event.event_type = "close";
+                }else{
+                    simplify_event.event_type = "watch";
+                }
+                for (int i = 0; i < events.data.length / 8; i++) {
+                    if (devices.model.equals("1")) {
+                        if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
+                            Order orderList = Order.finder.where()
+                                    .eq("device_id", devices.id)
+                                    .notIn("type", 179)
+                                    .eq("islast", 1)
+                                    .notIn("state", "treated")
+                                    .findUnique();
+                            if (orderList != null) {
+                                orderList.state = "treated";
+                                save_order.add(orderList);
+                            }
+                            Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
+                        }
+                        if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>1000) {
+                            count = 1;
+                            if (devices.order_times == null) {
+                                devices.order_times = 1;
+                                devicesList.add(devices);
+                                Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
+                            } else {
+                                devices.order_times = devices.order_times + 1;
+                                devicesList.add(devices);
+                                Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
+                            }
+                            if (devices.order_times >= 10) {
+                                devices.order_times = 0;
+                                devicesList.add(devices);
+                                Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
+
+                                Order order = new Order();
+                                order.device_id = devices.id;
+                                order.code = 179;
+                                order.type = 1;
+                                order.producer = "sys";
+                                order.device_type = "door";
+                                order.createTime = new Date().getTime() + "";
+                                order.state = "untreated";
+                                order.producer = "sys";
+                                order.islast = 1;
+                                int counts = Order.finder.where()
+                                        .eq("device_id", devices.id)
+                                        .eq("type", 1)
+                                        .eq("code", 179)
+                                        .notIn("state", "treated")
+                                        .findRowCount();
+                                if (counts != 0) {
+                                    break;
+                                }
                                 Order orderList = Order.finder.where()
                                         .eq("device_id", devices.id)
-                                        .notIn("type", 179)
+                                        .eq("type", 179)
                                         .eq("islast", 1)
                                         .notIn("state", "treated")
                                         .findUnique();
                                 if (orderList != null) {
-                                    orderList.state = "treated";
+                                    orderList.islast = 0;
                                     save_order.add(orderList);
                                 }
+                                save_order.add(order);
                                 Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                             }
-                            if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>1000) {
-                                count = 1;
-                                if (devices.order_times == null) {
-                                    devices.order_times = 1;
-                                    devicesList.add(devices);
-                                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
-                                } else {
-                                    devices.order_times = devices.order_times + 1;
-                                    devicesList.add(devices);
-                                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
-                                }
-                                if (devices.order_times >= 10) {
-                                    devices.order_times = 0;
-                                    devicesList.add(devices);
-                                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
-
-                                    Order order = new Order();
-                                    order.device_id = devices.id;
-                                    order.code = 179;
-                                    order.type = 1;
-                                    order.producer = "sys";
-                                    order.device_type = "door";
-                                    order.createTime = new Date().getTime() + "";
-                                    order.state = "untreated";
-                                    order.producer = "sys";
-                                    order.islast = 1;
-                                    int counts = Order.finder.where()
-                                            .eq("device_id", devices.id)
-                                            .eq("type", 1)
-                                            .eq("code", 179)
-                                            .notIn("state", "treated")
-                                            .findRowCount();
-                                    if (counts != 0) {
-                                        break;
-                                    }
-                                    Order orderList = Order.finder.where()
-                                            .eq("device_id", devices.id)
-                                            .eq("type", 179)
-                                            .eq("islast", 1)
-                                            .notIn("state", "treated")
-                                            .findUnique();
-                                    if (orderList != null) {
-                                        orderList.islast = 0;
-                                        save_order.add(orderList);
-                                    }
-                                    save_order.add(order);
-                                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
-                                }
-                                break;
+                            break;
+                        }
+                    } else if (devices.model.equals("2")) {
+                        if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
+                            Order orderList = Order.finder.where()
+                                    .eq("device_id", devices.id)
+                                    .eq("type", 1)
+                                    .notIn("code", 179)
+                                    .eq("islast", 1)
+                                    .notIn("state", "treated")
+                                    .findUnique();
+                            if (orderList != null) {
+                                orderList.state = "treated";
+                                save_order.add(orderList);
                             }
-                        } else if (devices.model.equals("2")) {
-                            if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
+                            Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
+                        }
+                        if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>2500) {
+                            count = 1;
+                            if (devices.order_times == null) {
+                                devices.order_times = 1;
+                                devicesList.add(devices);
+                                Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
+                            } else {
+                                devices.order_times = devices.order_times + 1;
+                                devicesList.add(devices);
+                                Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
+                            }
+                            if (devices.order_times >= 10) {
+                                devices.order_times = 0;
+                                devicesList.add(devices);
+                                Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
+
+                                Order order = new Order();
+                                order.device_id = devices.id;
+                                order.code = 179;
+                                order.type = 1;
+                                order.producer = "sys";
+                                order.device_type = "door";
+                                order.createTime = new Date().getTime() + "";
+                                order.state = "untreated";
+                                order.producer = "sys";
+                                order.islast = 1;
+                                int counts = Order.finder.where()
+                                        .eq("device_id", devices.id)
+                                        .eq("type", 1)
+                                        .eq("code", 179)
+                                        .notIn("state", "treated")
+                                        .findRowCount();
+                                if (counts != 0) {
+                                    break;
+                                }
                                 Order orderList = Order.finder.where()
                                         .eq("device_id", devices.id)
                                         .eq("type", 1)
-                                        .notIn("code", 179)
                                         .eq("islast", 1)
                                         .notIn("state", "treated")
                                         .findUnique();
                                 if (orderList != null) {
-                                    orderList.state = "treated";
+                                    orderList.islast = 0;
                                     save_order.add(orderList);
                                 }
+                                save_order.add(order);
                                 Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                             }
-                            if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>2500) {
-                                count = 1;
-                                if (devices.order_times == null) {
-                                    devices.order_times = 1;
-                                    devicesList.add(devices);
-                                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
-                                } else {
-                                    devices.order_times = devices.order_times + 1;
-                                    devicesList.add(devices);
-                                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
-                                }
-                                if (devices.order_times >= 10) {
-                                    devices.order_times = 0;
-                                    devicesList.add(devices);
-                                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
-
-                                    Order order = new Order();
-                                    order.device_id = devices.id;
-                                    order.code = 179;
-                                    order.type = 1;
-                                    order.producer = "sys";
-                                    order.device_type = "door";
-                                    order.createTime = new Date().getTime() + "";
-                                    order.state = "untreated";
-                                    order.producer = "sys";
-                                    order.islast = 1;
-                                    int counts = Order.finder.where()
-                                            .eq("device_id", devices.id)
-                                            .eq("type", 1)
-                                            .eq("code", 179)
-                                            .notIn("state", "treated")
-                                            .findRowCount();
-                                    if (counts != 0) {
-                                        break;
-                                    }
-                                    Order orderList = Order.finder.where()
-                                            .eq("device_id", devices.id)
-                                            .eq("type", 1)
-                                            .eq("islast", 1)
-                                            .notIn("state", "treated")
-                                            .findUnique();
-                                    if (orderList != null) {
-                                        orderList.islast = 0;
-                                        save_order.add(orderList);
-                                    }
-                                    save_order.add(order);
-                                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
-                                }
-                                break;
-                            }
+                            break;
                         }
                     }
-                    if (count == 0) {
-                        devices.order_times = 0;
-                        devicesList.add(devices);
-                        Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
-                    }
+                }
+                if (count == 0) {
+                    devices.order_times = 0;
+                    devicesList.add(devices);
+                    Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(devicesList);
                 }
             }
-
+            simplifyEvents.add(simplify_event);
             save_events.add(ladder_event);
             new_datex = new_datex.getTime() > events.time.getTime() ? new_datex : events.time;
         }
+        Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(simplifyEvents);
         Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_events);
     }
 

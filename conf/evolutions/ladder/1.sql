@@ -212,6 +212,16 @@ create table runtime (
   constraint pk_runtime primary key (id)
 );
 
+create table simplify_events (
+  id                            integer auto_increment not null,
+  device_id                     integer,
+  event_type                    varchar(255),
+  device_type                   varchar(255),
+  start_time                    datetime(6),
+  end_time                      datetime(6),
+  constraint pk_simplify_events primary key (id)
+);
+
 
 # --- !Downs
 
@@ -244,4 +254,6 @@ drop table if exists offline;
 drop table if exists `order`;
 
 drop table if exists runtime;
+
+drop table if exists simplify_events;
 
