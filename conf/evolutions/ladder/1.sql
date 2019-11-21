@@ -219,6 +219,8 @@ create table simplify_events (
   device_type                   varchar(255),
   start_time                    datetime(6),
   end_time                      datetime(6),
+  current                       integer,
+  speed                         integer,
   constraint pk_simplify_events primary key (id)
 );
 

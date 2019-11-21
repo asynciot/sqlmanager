@@ -8,7 +8,6 @@ import ladder.models.Order;
 import play.Logger;
 import sun.rmi.runtime.Log;
 
-import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.util.*;
 /**
@@ -22,6 +21,18 @@ public class GetEventThread extends Thread {
 
     public GetEventThread() {
         Logger.info("create GetEventInfo Thread ok");
+    }
+
+    private int current(byte[] buffer, int i){
+        return (((buffer[i * 8 + 4] & 0xff) << 8) + (buffer[i * 8 + 5] & 0xff));
+    }
+    private int speed(byte[] buffer, int i){
+        int speed = (((buffer[i * 8 + 6] & 0xff) << 8) + (buffer[i * 8 + 7] & 0xff));
+
+        if(speed >32767){
+            speed = (speed-65536);
+        }
+        return speed;
     }
 
     private void update_event() {
@@ -58,7 +69,8 @@ public class GetEventThread extends Thread {
             simplify_event.device_id = events.device_id;
             simplify_event.start_time = events.time;
             simplify_event.device_type = devices.device;
-
+            simplify_event.current = 0;
+            simplify_event.speed = 0;
             if (devices.device.equals("15")) {
                 byte[] buffer = events.data;
                 int count = 0;
@@ -70,8 +82,16 @@ public class GetEventThread extends Thread {
                     simplify_event.event_type = "watch";
                 }
                 for (int i = 0; i < events.data.length / 8; i++) {
+                    if (this.current(buffer,i) > simplify_event.current) {
+                        simplify_event.current = this.current(buffer,i);
+                    }
+                    if (Math.abs(this.speed(buffer,i))  > Math.abs(simplify_event.speed) ) {
+                        simplify_event.speed = this.speed(buffer,i);
+                    }
+                }
+                for (int i = 0; i < events.data.length / 8; i++) {
                     if (devices.model.equals("1")) {
-                        if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
+                        if (((buffer[i * 8 + 1] & 0x03) + (buffer[i * 8 + 2] & 0xf0)) == 0) {
                             Order orderList = Order.finder.where()
                                     .eq("device_id", devices.id)
                                     .notIn("type", 179)
@@ -84,7 +104,7 @@ public class GetEventThread extends Thread {
                             }
                             Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                         }
-                        if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>1000) {
+                        if ((((buffer[i * 8 + 4] & 0xff) << 8) + (buffer[i * 8 + 5] & 0xff)) > 1000) {
                             count = 1;
                             if (devices.order_times == null) {
                                 devices.order_times = 1;
@@ -135,7 +155,7 @@ public class GetEventThread extends Thread {
                             break;
                         }
                     } else if (devices.model.equals("2")) {
-                        if (((buffer[i*8+1]&0x03)+(buffer[i*8+2]&0xf0))==0) {
+                        if (((buffer[i * 8 + 1] & 0x03) + (buffer[i * 8 + 2] & 0xf0)) == 0) {
                             Order orderList = Order.finder.where()
                                     .eq("device_id", devices.id)
                                     .eq("type", 1)
@@ -149,7 +169,7 @@ public class GetEventThread extends Thread {
                             }
                             Ebean.getServer(CommonConfig.LADDER_SERVER).saveAll(save_order);
                         }
-                        if ((((buffer[i*8+4]&0xff)<<8)+(buffer[i*8+5]&0xff))>2500) {
+                        if ((((buffer[i * 8 + 4] & 0xff) << 8) + (buffer[i * 8 + 5] & 0xff)) > 2500) {
                             count = 1;
                             if (devices.order_times == null) {
                                 devices.order_times = 1;

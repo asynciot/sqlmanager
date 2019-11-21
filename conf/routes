@@ -8,6 +8,3 @@ GET     /                           controllers.HomeController.index
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
-POST      /Test/Insert_db1_Test    test.DeviceTest.Insert_db1_Test()
-POST      /Test/Insert_db2_Test    test.EventTest.Insert_db2_Test()
-#POST      /Test/Insert_db3_Test    test.MonitorTest.Insert_db3_Test()

@@ -23,6 +23,9 @@ public class SimplifyEvents extends Model {
 
     public Date end_time;
 
+    public Integer current;
+
+    public Integer speed;
 
     public static Finder<Integer, SimplifyEvents> finder =
             new Finder<Integer, SimplifyEvents>(CommonConfig.LADDER_SERVER,Integer.class, SimplifyEvents.class){};
