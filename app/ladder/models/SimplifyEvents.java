@@ -27,6 +27,10 @@ public class SimplifyEvents extends Model {
 
     public Integer speed;
 
+    public Integer door;
+
+    public Integer max_door;
+
     public static Finder<Integer, SimplifyEvents> finder =
             new Finder<Integer, SimplifyEvents>(CommonConfig.LADDER_SERVER,Integer.class, SimplifyEvents.class){};
 }

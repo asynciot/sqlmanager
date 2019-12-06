@@ -40,13 +40,14 @@ public class GetDevThread extends Thread {
 
         List<ladder.models.Devices> save_devices=new ArrayList<>();
         List<ladder.models.Devices> delete_devices= new ArrayList<>();
+        List<ladder.models.DeviceInfo> delete_devicesInfo= new ArrayList<>();
         List<DeviceInfo> deviceInfoList= new ArrayList<>();
         List<Ladder> ladderList= new ArrayList<>();
         for(Devices devices : devicesList){
             if(old_date.getTime()>=devices.t_update.getTime()&&!init_device){
                 continue;
             }
-            ladder.models.Devices mamodel= ladder.models.Devices.finder.byId(devices.id);
+            ladder.models.Devices mamodel= ladder.models.Devices.finder.where().eq("imei",devices.IMEI).findUnique();
             ladder.models.Devices machine_device  = new ladder.models.Devices();
             if(mamodel!=null){
                 delete_devices.add(mamodel);
@@ -99,7 +100,7 @@ public class GetDevThread extends Thread {
             }
             DeviceInfo device_Info= DeviceInfo.finder.where().eq("id",devices.id).findUnique();
             Ladder ladder_one = Ladder.finder.where().eq("ctrl_id",devices.id).findUnique();
-            if(ladder_one!=null){
+            if(ladder_one!=null&&device_Info!=null){
                 ladder_one.state = device_Info.state;
                 ladderList.add(ladder_one);
             }

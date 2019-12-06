@@ -221,6 +221,8 @@ create table simplify_events (
   end_time                      datetime(6),
   current                       integer,
   speed                         integer,
+  door                          integer,
+  max_door                      integer,
   constraint pk_simplify_events primary key (id)
 );
 
