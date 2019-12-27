@@ -54,29 +54,31 @@ public class GetDevThread extends Thread {
                 if(mamodel.order_times!=null){
                     machine_device.order_times= mamodel.order_times;
                 }
+                machine_device.id= mamodel.id;
+            }else{
+                machine_device.id= devices.id;
             }
-            machine_device.id= devices.id;
-            machine_device.dock_id= devices.dock_id;
-            machine_device.IMSI= devices.IMSI;
-            machine_device.IMEI= devices.IMEI;
-            machine_device.board= devices.board;
-            machine_device.cellular= devices.cellular;
-            machine_device.device= devices.device;
-            machine_device.firmware= devices.firmware;
-            machine_device.ipaddr= devices.ipaddr;
-            machine_device.model= devices.model;
-            machine_device.contract_id= devices.contract_id;
-            machine_device.t_update= devices.t_update;
-            machine_device.t_logout= devices.t_logout;
-            machine_device.t_logon= devices.t_logon;
-            machine_device.t_create= devices.t_create;
-            machine_device.cell_mcc= devices.cell_mcc;
-            machine_device.cell_cid= devices.cell_cid;
-            machine_device.cell_lac= devices.cell_lac;
-            machine_device.cell_mnc= devices.cell_mnc;
+            machine_device.dock_id = devices.dock_id;
+            machine_device.IMSI = devices.IMSI;
+            machine_device.IMEI = devices.IMEI;
+            machine_device.board = devices.board;
+            machine_device.cellular = devices.cellular;
+            machine_device.device = devices.device;
+            machine_device.firmware = devices.firmware;
+            machine_device.ipaddr = devices.ipaddr;
+            machine_device.model = devices.model;
+            machine_device.contract_id = devices.contract_id;
+            machine_device.t_update = devices.t_update;
+            machine_device.t_logout = devices.t_logout;
+            machine_device.t_logon = devices.t_logon;
+            machine_device.t_create = devices.t_create;
+            machine_device.cell_mcc = devices.cell_mcc;
+            machine_device.cell_cid = devices.cell_cid;
+            machine_device.cell_lac = devices.cell_lac;
+            machine_device.cell_mnc = devices.cell_mnc;
 
             DeviceInfo deviceInfo=new DeviceInfo();
-            if(DeviceInfo.finder.byId(devices.id)==null){
+            if(DeviceInfo.finder.byId(machine_device.id)==null){
                 deviceInfo.device_name="未命名设备";
                 if(devices.contract_id!=null&& (devices.contract_id[0]&0xFF)==0x11){
                     deviceInfo.register="registered";
@@ -188,10 +190,9 @@ public class GetDevThread extends Thread {
                         alert = runtime.data[18] & 0xff;
                         type = "ctrl";
                     }
+                    String sql = String.format("UPDATE ladder.device_info set rssi=%d,runtime_state=%d where id=%d", rssi, runtime_state, runtime.device_id);
+                    Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
                     if ((type.equals("door") && alert == 2) || (type.equals("ctrl") && (alert != 16 && alert != 18))) {
-                        String sql = String.format("UPDATE ladder.device_info set rssi=%d,runtime_state=%d where id=%d", rssi, runtime_state, runtime.device_id);
-                        Ebean.getServer(CommonConfig.LADDER_SERVER).createSqlUpdate(sql).execute();
-
                         byte[] buffer = runtime.data;
                         int bufferData = (((buffer[8]&0xff))&0x20)>>5;
                         if(bufferData==1){

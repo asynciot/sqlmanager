@@ -63,7 +63,7 @@ public class GetEventThread extends Thread {
             ladder_event.time = events.time;
 
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            String date = sdf.format(events.time.getTime()+events.length*events.interval);
+            String date = sdf.format(events.time.getTime()+events.length*events.interval/2);
             try {
                 simplify_event.end_time = sdf.parse(date);
             } catch (Exception e) {
@@ -75,7 +75,6 @@ public class GetEventThread extends Thread {
             simplify_event.device_type = devices.device;
             simplify_event.current = 0;
             simplify_event.speed = 0;
-            simplify_event.door = 0;
             if (devices.device.equals("15")) {
                 byte[] buffer = events.data;
                 int count = 0;
@@ -93,13 +92,24 @@ public class GetEventThread extends Thread {
                     if (Math.abs(this.speed(buffer,i))  > Math.abs(simplify_event.speed) ) {
                         simplify_event.speed = this.speed(buffer,i);
                     }
-                    if (this.door(buffer,i) > simplify_event.door) {
-                        simplify_event.door = this.door(buffer,i);
+                    if (simplify_event.event_type.equals("open")) {
+                        simplify_event.door = 0;
+                        if (this.door(buffer,i) > simplify_event.door) {
+                            simplify_event.door = this.door(buffer,i);
+                        }
+                    } else {
+                        simplify_event.door = 1600;
+                        if (this.door(buffer,i) < simplify_event.door) {
+                            simplify_event.door = this.door(buffer,i);
+                        }
                     }
                 }
                 for (int i = 0; i < events.data.length / 8; i++) {
                     if (devices.model.equals("1")) {
                         Runtime runtime = Runtime.finder.where().eq("device_id",events.device_id).eq("type",4100).findUnique();
+                        if (runtime==null){
+                            break;
+                        }
                         byte[] buffer2 = runtime.data;
                         simplify_event.max_door = ((buffer2[26]&0xff)<<8)+(buffer2[27]&0xff);
                         if (((buffer[i * 8 + 1] & 0x03) + (buffer[i * 8 + 2] & 0xf0)) == 0) {
@@ -166,8 +176,12 @@ public class GetEventThread extends Thread {
                             break;
                         }
                     } else if (devices.model.equals("2")) {
-                        Runtime runtime = Runtime.finder.where().idEq(events.device_id).eq("type",4101).findUnique();
-                        simplify_event.max_door = ((runtime.data[14]&0xff)<<8)+(runtime.data[15]&0xff);
+                        Runtime runtime = Runtime.finder.where().eq("device_id",events.device_id).eq("type",4101).findUnique();
+                        if (runtime==null){
+                            break;
+                        }
+                        byte[] buffer2 = runtime.data;
+                        simplify_event.max_door = ((buffer2[14]&0xff)<<8)+(buffer2[15]&0xff);
                         if (((buffer[i * 8 + 1] & 0x03) + (buffer[i * 8 + 2] & 0xf0)) == 0) {
                             Order orderList = Order.finder.where()
                                     .eq("device_id", devices.id)
