@@ -40,45 +40,44 @@ public class GetDevThread extends Thread {
 
         List<ladder.models.Devices> save_devices=new ArrayList<>();
         List<ladder.models.Devices> delete_devices= new ArrayList<>();
-        List<ladder.models.DeviceInfo> delete_devicesInfo= new ArrayList<>();
         List<DeviceInfo> deviceInfoList= new ArrayList<>();
         List<Ladder> ladderList= new ArrayList<>();
         for(Devices devices : devicesList){
             if(old_date.getTime()>=devices.t_update.getTime()&&!init_device){
                 continue;
             }
-            ladder.models.Devices mamodel= ladder.models.Devices.finder.where().eq("imei",devices.IMEI).findUnique();
-            ladder.models.Devices machine_device  = new ladder.models.Devices();
-            if(mamodel!=null){
-                delete_devices.add(mamodel);
-                if(mamodel.order_times!=null){
-                    machine_device.order_times= mamodel.order_times;
+            ladder.models.Devices Device_Del= ladder.models.Devices.finder.where().eq("imei",devices.IMEI).findUnique();
+            ladder.models.Devices ladder  = new ladder.models.Devices();
+            if(Device_Del!=null){
+                delete_devices.add(Device_Del);
+                if(Device_Del.order_times!=null){
+                    ladder.order_times= Device_Del.order_times;
                 }
-                machine_device.id= mamodel.id;
+                ladder.id= Device_Del.id;
             }else{
-                machine_device.id= devices.id;
+                ladder.id= devices.id;
             }
-            machine_device.dock_id = devices.dock_id;
-            machine_device.IMSI = devices.IMSI;
-            machine_device.IMEI = devices.IMEI;
-            machine_device.board = devices.board;
-            machine_device.cellular = devices.cellular;
-            machine_device.device = devices.device;
-            machine_device.firmware = devices.firmware;
-            machine_device.ipaddr = devices.ipaddr;
-            machine_device.model = devices.model;
-            machine_device.contract_id = devices.contract_id;
-            machine_device.t_update = devices.t_update;
-            machine_device.t_logout = devices.t_logout;
-            machine_device.t_logon = devices.t_logon;
-            machine_device.t_create = devices.t_create;
-            machine_device.cell_mcc = devices.cell_mcc;
-            machine_device.cell_cid = devices.cell_cid;
-            machine_device.cell_lac = devices.cell_lac;
-            machine_device.cell_mnc = devices.cell_mnc;
+            ladder.dock_id = devices.dock_id;
+            ladder.IMSI = devices.IMSI;
+            ladder.IMEI = devices.IMEI;
+            ladder.board = devices.board;
+            ladder.cellular = devices.cellular;
+            ladder.device = devices.device;
+            ladder.firmware = devices.firmware;
+            ladder.ipaddr = devices.ipaddr;
+            ladder.model = devices.model;
+            ladder.contract_id = devices.contract_id;
+            ladder.t_update = devices.t_update;
+            ladder.t_logout = devices.t_logout;
+            ladder.t_logon  = devices.t_logon;
+            ladder.t_create = devices.t_create;
+            ladder.cell_mcc = devices.cell_mcc;
+            ladder.cell_cid = devices.cell_cid;
+            ladder.cell_lac = devices.cell_lac;
+            ladder.cell_mnc = devices.cell_mnc;
 
             DeviceInfo deviceInfo=new DeviceInfo();
-            if(DeviceInfo.finder.byId(machine_device.id)==null){
+            if(DeviceInfo.finder.byId(ladder.id)==null){
                 deviceInfo.device_name="未命名设备";
                 if(devices.contract_id!=null&& (devices.contract_id[0]&0xFF)==0x11){
                     deviceInfo.register="registered";
@@ -106,7 +105,7 @@ public class GetDevThread extends Thread {
                 ladder_one.state = device_Info.state;
                 ladderList.add(ladder_one);
             }
-            save_devices.add(machine_device);
+            save_devices.add(ladder);
             new_date = new_date.getTime()>devices.t_update.getTime()? new_date :devices.t_update;
         }
         Ebean.getServer(CommonConfig.LADDER_SERVER).deleteAll(delete_devices);

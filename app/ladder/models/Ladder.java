@@ -2,12 +2,9 @@ package ladder.models;
 
 import com.avaje.ebean.Model;
 import controllers.CommonConfig;
-import ladder.models.Cellocation;
 
-import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import java.util.Date;
 
 
 @Entity
